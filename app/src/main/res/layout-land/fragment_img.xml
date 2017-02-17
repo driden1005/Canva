@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <ImageView
+        android:id="@+id/image"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true" />
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentRight="true"
+        android:layout_centerVertical="true"
+        android:orientation="vertical">
+
+        <Button
+            android:id="@+id/button_open_image"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Open"
+            android:textSize="12sp" />
+
+        <Button
+            android:id="@+id/button_mosaic_16"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="M16" />
+        <Button
+            android:id="@+id/button_mosaic_32"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="M32" />
+
+    </LinearLayout>
+
+
+    <TextView
+        android:id="@+id/tv_imgInfo"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="30dp"
+        android:gravity="center_horizontal"
+        android:textSize="12sp" />
+
+</RelativeLayout>
