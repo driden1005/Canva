@@ -15,6 +15,9 @@ import android.support.v4.app.Fragment;
 import android.support.v4.content.ContextCompat;
 import android.util.DisplayMetrics;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
@@ -65,6 +68,10 @@ public class MosaicFragment extends Fragment implements MainContract.View {
      */
     @OnClick(R.id.button_open_image)
     void openGallery() {
+        if (!presenter.getIsFinished()) {
+            Toast.makeText(getContext(), "The job is still running.", Toast.LENGTH_SHORT).show();
+            return;
+        }
         presenter.shutDownThreadExecutor();
         // Permission check for version 23 and higher versions.
         if (ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.READ_EXTERNAL_STORAGE)
@@ -107,6 +114,8 @@ public class MosaicFragment extends Fragment implements MainContract.View {
     @Override
     public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
 
+        setHasOptionsMenu(true);
+
         presenter = new MainFragmentPresenter(getActivity());
 
         View mView = inflater.inflate(R.layout.fragment_img, container, false);
@@ -116,6 +125,22 @@ public class MosaicFragment extends Fragment implements MainContract.View {
         presenter.setView(this);
 
         return mView;
+    }
+
+    @Override
+    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+        inflater.inflate(R.menu.menu, menu);
+        super.onCreateOptionsMenu(menu, inflater);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        if (item.getItemId() == R.id.menu_img_download) {
+            presenter.downloadImage(mImageView);
+            return false;
+        }
+
+        return super.onOptionsItemSelected(item);
     }
 
     @Override
@@ -136,11 +161,16 @@ public class MosaicFragment extends Fragment implements MainContract.View {
     }
 
     @Override
-    public void updateImageView(final Bitmap bitmap) {
+    public void updateImageView(final Bitmap bitmap, final boolean isFinished) {
         getActivity().runOnUiThread(new Runnable() {
             @Override
             public void run() {
+
                 mImageView.setImageBitmap(bitmap);
+
+                if (isFinished) {
+                    Toast.makeText(getActivity(), "Creating mosaics has been done", Toast.LENGTH_SHORT).show();
+                }
             }
         });
     }

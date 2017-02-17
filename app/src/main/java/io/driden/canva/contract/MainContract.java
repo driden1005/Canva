@@ -2,6 +2,7 @@ package io.driden.canva.contract;
 
 import android.graphics.Bitmap;
 import android.support.annotation.NonNull;
+import android.widget.ImageView;
 
 public interface MainContract {
 
@@ -17,11 +18,13 @@ public interface MainContract {
 
         boolean getIsFinished();
 
+        void downloadImage(ImageView mImageView);
+
 //        boolean isThreadAlive();
     }
 
     interface View {
-        void updateImageView(Bitmap fullImage);
+        void updateImageView(Bitmap fullImage, boolean isFinished);
 
         void updateTextInfo(String text);
     }

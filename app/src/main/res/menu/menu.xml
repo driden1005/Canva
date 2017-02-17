@@ -5,8 +5,8 @@
     tools:context=".ui.MosaicActivity">
 
     <item
-        android:id="@+id/menu_img_upload"
-        android:icon="@android:drawable/ic_menu_upload"
+        android:id="@+id/menu_img_download"
+        android:icon="@drawable/ic_file_download_black_24dp"
         android:orderInCategory="100"
         android:title="Image Upload"
         app:showAsAction="always" />

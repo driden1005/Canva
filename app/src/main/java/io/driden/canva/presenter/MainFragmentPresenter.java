@@ -6,14 +6,20 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.BitmapRegionDecoder;
 import android.graphics.Canvas;
+import android.graphics.drawable.BitmapDrawable;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.support.annotation.NonNull;
 import android.util.DisplayMetrics;
 import android.util.Log;
+import android.widget.ImageView;
 import android.widget.Toast;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -37,7 +43,7 @@ public class MainFragmentPresenter implements MainContract.Presenter {
 
     ExecutorService threadExecutor;
 
-    boolean isFinished = true;
+    boolean isThreadFinished = true;
 
     @Inject
     DiskLruImageCache imageCache;
@@ -95,7 +101,7 @@ public class MainFragmentPresenter implements MainContract.Presenter {
     @Override
     public void drawMosaicImage(@NonNull String filePath, int tileWidth, int tileHeight) {
 
-        isFinished = false;
+        isThreadFinished = false;
 
         System.gc();
 
@@ -138,7 +144,7 @@ public class MainFragmentPresenter implements MainContract.Presenter {
                 new DrawingTask.DrawingRowListener() {
                     @Override
                     public void onDrawingFinished(boolean isFinished) {
-                        view.updateImageView(croppedImage);
+                        view.updateImageView(croppedImage, isFinished);
                         if (isFinished) {
                             setIsFinished(isFinished);
                         }
@@ -151,13 +157,56 @@ public class MainFragmentPresenter implements MainContract.Presenter {
     }
 
     public void setIsFinished(boolean isFinished) {
-        this.isFinished = isFinished;
+        this.isThreadFinished = isFinished;
     }
 
     @Override
     public boolean getIsFinished() {
 
-        return isFinished;
+        return isThreadFinished;
+    }
+
+    @Override
+    public void downloadImage(ImageView mImageView) {
+        if (!getIsFinished()) {
+            Toast.makeText(activity, "The job is still running", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        try {
+            String filePath = (String) mImageView.getTag();
+            if (!"".equals(filePath)) {
+                String filename = filePath.substring(filePath.lastIndexOf("/") + 1);
+                String savingPath = filePath.replace(filename, "result_" + filename);
+                Bitmap bitmap = ((BitmapDrawable) mImageView.getDrawable()).getBitmap();
+                FileOutputStream fos = null;
+                try {
+                    fos = new FileOutputStream(savingPath);
+                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, fos);
+                } catch (FileNotFoundException e) {
+                    e.printStackTrace();
+                } finally {
+                    try {
+                        fos.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+
+                File file = new File(savingPath);
+
+                if (file.isFile()) {
+                    Toast.makeText(activity, "File has been saved", Toast.LENGTH_SHORT).show();
+                    Log.d(TAG, "downloadImage: File has been saved:" + file.getAbsolutePath());
+                } else {
+                    Toast.makeText(activity, "No File has been saved", Toast.LENGTH_SHORT).show();
+                    Log.d(TAG, "downloadImage: No File has been saved");
+                }
+            }
+
+        } catch (NullPointerException e) {
+            Toast.makeText(activity, "No file exits", Toast.LENGTH_SHORT).show();
+            Log.d(TAG, "downloadImage: No such Image");
+        }
     }
 
     public void shutDownThreadExecutor() {

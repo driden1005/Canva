@@ -224,7 +224,7 @@ public class BitmapUtils {
      * The returning bitmap is used for calculating the average color.
      *
      * @param rect
-     * @param croppedImage
+     * @param byteArray
      * @return
      */
     public static Bitmap getTileFromImage(Rect rect, byte[] byteArray) {
@@ -279,14 +279,20 @@ public class BitmapUtils {
         int screenWidth = metrics.widthPixels;
         int screenHeight = metrics.heightPixels;
 
+        // Create some margins
+        float scaleRatio = 0.9f;
+
+        int marginedWidth = Math.round(screenWidth * scaleRatio);
+        int marginedHeight = Math.round(screenHeight * scaleRatio);
+
         float sampleSize = 1;
 
-        if (bitmapHeight > screenHeight || bitmapWidth > screenWidth) {
+        if (bitmapHeight > marginedHeight || bitmapWidth > marginedWidth) {
 
             float scaledWidth = bitmapWidth / sampleSize;
             float scaledHeight = bitmapHeight / sampleSize;
 
-            while (scaledWidth > screenWidth || scaledHeight > screenHeight) {
+            while (scaledWidth > marginedWidth || scaledHeight > marginedHeight) {
                 sampleSize += 0.1;
                 scaledWidth = bitmapWidth / sampleSize;
                 scaledHeight = bitmapHeight / sampleSize;
