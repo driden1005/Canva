@@ -19,7 +19,7 @@ public class MosaicActivity extends AppCompatActivity {
         setSupportActionBar(toolbar);
 
         FragmentTransaction ft = getSupportFragmentManager().beginTransaction();
-        ft.add(R.id.frameLayout, new MosaicFragment()).commit();
+        ft.replace(R.id.frameLayout, MosaicFragment.getInstance()).addToBackStack(null).commit();
 
     }
 }

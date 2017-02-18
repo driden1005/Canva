@@ -20,6 +20,10 @@ public interface MainContract {
 
         void downloadImage(ImageView mImageView);
 
+        void updateTextInfo(String infoText);
+
+        void setByteArray(byte[] bitmapByteArray);
+
 //        boolean isThreadAlive();
     }
 

@@ -13,8 +13,7 @@ import io.driden.canva.task.DrawingTask;
 @Component(modules = {AppModule.class, NetworkModule.class, ImageModule.class})
 public interface ImageComponent {
 
-    void inject(DrawingTask task);
-
-    void inject(MainFragmentPresenter task);
+    void inject(MainFragmentPresenter obj);
+    void inject(DrawingTask obj);
 
 }

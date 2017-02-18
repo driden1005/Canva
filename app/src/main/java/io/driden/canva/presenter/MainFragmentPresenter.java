@@ -2,6 +2,7 @@ package io.driden.canva.presenter;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.pm.ActivityInfo;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.BitmapRegionDecoder;
@@ -28,10 +29,12 @@ import javax.inject.Inject;
 
 import io.driden.canva.Utils.BitmapUtils;
 import io.driden.canva.Utils.DiskLruImageCache;
+import io.driden.canva.Utils.HttpClientUtils;
 import io.driden.canva.app.CanvaApplication;
 import io.driden.canva.contract.MainContract;
 import io.driden.canva.data.ImageInfo;
 import io.driden.canva.task.DrawingTask;
+import retrofit2.Retrofit;
 
 public class MainFragmentPresenter implements MainContract.Presenter {
 
@@ -46,16 +49,21 @@ public class MainFragmentPresenter implements MainContract.Presenter {
     boolean isThreadFinished = true;
 
     @Inject
+    Retrofit.Builder retrofitBuilder;
+    @Inject
+    HttpClientUtils clientUtils;
+    @Inject
     DiskLruImageCache imageCache;
 
     public MainFragmentPresenter(Activity activity) {
-        this.activity = activity;
         CanvaApplication.getImageComponent().inject(this);
+        this.activity = activity;
     }
 
     public void setView(MainContract.View view) {
         this.view = view;
     }
+
 
     /**
      * Check the original image size, and return the file path.
@@ -110,6 +118,8 @@ public class MainFragmentPresenter implements MainContract.Presenter {
             return;
         }
 
+        activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LOCKED);
+
         BitmapRegionDecoder decoder = BitmapUtils.initBitmapRegionDecoder(filePath);
 
         if (decoder == null) {
@@ -139,15 +149,25 @@ public class MainFragmentPresenter implements MainContract.Presenter {
         croppedImage.compress(Bitmap.CompressFormat.PNG, 100, stream);
         byte[] byteArray = stream.toByteArray();
 
+        Retrofit retrofit = retrofitBuilder.client(clientUtils.getClient()).build();
 
-        final DrawingTask drawingTask = new DrawingTask(byteArray, mainCanvas, imageInfo,
+        final DrawingTask drawingTask = new DrawingTask(retrofit, byteArray, mainCanvas, imageInfo,
                 new DrawingTask.DrawingRowListener() {
                     @Override
                     public void onDrawingFinished(boolean isFinished) {
                         view.updateImageView(croppedImage, isFinished);
                         if (isFinished) {
                             setIsFinished(isFinished);
+                            activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR);
                         }
+                    }
+
+                    @Override
+                    public void onDrawingFailed(Throwable t) {
+                        Log.d(TAG, t.getMessage());
+                        setIsFinished(true);
+                        activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR);
+                        threadExecutor.shutdown();
                     }
                 }
         );
@@ -166,6 +186,12 @@ public class MainFragmentPresenter implements MainContract.Presenter {
         return isThreadFinished;
     }
 
+    /**
+     * Save the mosaic bitmap into the file
+     * The file path is the same as the original file path.
+     *
+     * @param mImageView
+     */
     @Override
     public void downloadImage(ImageView mImageView) {
         if (!getIsFinished()) {
@@ -174,9 +200,18 @@ public class MainFragmentPresenter implements MainContract.Presenter {
         }
         try {
             String filePath = (String) mImageView.getTag();
+
             if (!"".equals(filePath)) {
                 String filename = filePath.substring(filePath.lastIndexOf("/") + 1);
-                String savingPath = filePath.replace(filename, "result_" + filename);
+
+
+                StringBuffer sb = new StringBuffer();
+                sb.append("result_").append(filename.replaceFirst("(\\.[^.]*$|$)", ".png"));
+
+                String newFileName = sb.toString();
+
+                String savingPath = filePath.replace(filename, newFileName);
+
                 Bitmap bitmap = ((BitmapDrawable) mImageView.getDrawable()).getBitmap();
                 FileOutputStream fos = null;
                 try {
@@ -186,7 +221,9 @@ public class MainFragmentPresenter implements MainContract.Presenter {
                     e.printStackTrace();
                 } finally {
                     try {
-                        fos.close();
+                        if (fos != null) {
+                            fos.close();
+                        }
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
@@ -203,10 +240,22 @@ public class MainFragmentPresenter implements MainContract.Presenter {
                 }
             }
 
-        } catch (NullPointerException e) {
+        } catch (Exception e) {
+            e.printStackTrace();
             Toast.makeText(activity, "No file exits", Toast.LENGTH_SHORT).show();
-            Log.d(TAG, "downloadImage: No such Image");
+            Log.d(TAG, "downloadImage: No such Image:" + e.getMessage());
         }
+    }
+
+    @Override
+    public void updateTextInfo(String infoText) {
+        view.updateTextInfo(infoText);
+    }
+
+    @Override
+    public void setByteArray(byte[] bitmapByteArray) {
+        Bitmap bitmap = BitmapFactory.decodeByteArray(bitmapByteArray, 0, bitmapByteArray.length, new BitmapFactory.Options());
+        view.updateImageView(bitmap, false);
     }
 
     public void shutDownThreadExecutor() {

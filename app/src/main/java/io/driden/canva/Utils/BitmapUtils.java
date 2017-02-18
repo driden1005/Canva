@@ -21,6 +21,8 @@ import retrofit2.Retrofit;
 
 public class BitmapUtils {
 
+    public static final long MAX_DISC_CACHE_SIZE = 10 * 1024 * 1024;
+
     static final String TAG = BitmapUtils.class.getSimpleName();
 
     /**
@@ -58,7 +60,7 @@ public class BitmapUtils {
         int originalW = options.outWidth;
         int originalH = options.outHeight;
 
-        float sampleSize = getScaleSize(originalW, originalH, metrics);
+        float sampleSize = getScaledSize(originalW, originalH, metrics);
 
         options.inSampleSize = Math.round(sampleSize);
         BitmapFactory.decodeFile(filePath, options);
@@ -272,7 +274,7 @@ public class BitmapUtils {
         return tileInfos;
     }
 
-    public static float getScaleSize(int w, int h, DisplayMetrics metrics) {
+    public static float getScaledSize(int w, int h, DisplayMetrics metrics) {
         int bitmapWidth = w;
         int bitmapHeight = h;
 
@@ -280,7 +282,7 @@ public class BitmapUtils {
         int screenHeight = metrics.heightPixels;
 
         // Create some margins
-        float scaleRatio = 0.9f;
+        float scaleRatio = 0.90f;
 
         int marginedWidth = Math.round(screenWidth * scaleRatio);
         int marginedHeight = Math.round(screenHeight * scaleRatio);
@@ -319,7 +321,7 @@ public class BitmapUtils {
         int bitmapWidth = options.outWidth;
         int bitmapHeight = options.outHeight;
 
-        float sampleSize = getScaleSize(bitmapWidth, bitmapHeight, metrics);
+        float sampleSize = getScaledSize(bitmapWidth, bitmapHeight, metrics);
 
         options.inSampleSize = Math.round(sampleSize);
 

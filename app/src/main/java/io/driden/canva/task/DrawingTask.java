@@ -5,7 +5,6 @@ import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Rect;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -21,6 +20,8 @@ import io.driden.canva.app.CanvaApplication;
 import io.driden.canva.data.ImageInfo;
 import io.driden.canva.data.TileInfo;
 import okhttp3.ResponseBody;
+import retrofit2.Call;
+import retrofit2.Callback;
 import retrofit2.Response;
 import retrofit2.Retrofit;
 
@@ -34,27 +35,27 @@ public class DrawingTask implements Runnable {
     ImageInfo imageInfo;
 
     @Inject
-    Retrofit retrofit;
-
-    @Inject
     DiskLruImageCache imageCache;   // Disk Cache
+
+    Retrofit retrofit;
 
     public interface DrawingRowListener {
         void onDrawingFinished(boolean isFinished);
+
+        void onDrawingFailed(Throwable t);
+
     }
 
     DrawingRowListener listener;
 
-    public DrawingTask(byte[] byteArray, Canvas mainCanvas, ImageInfo imageInfo, DrawingRowListener listener) {
-
+    public DrawingTask(Retrofit retrofit, byte[] byteArray, Canvas mainCanvas, ImageInfo imageInfo, DrawingRowListener listener) {
         CanvaApplication.getImageComponent().inject(this);
-
+        this.retrofit = retrofit;
         this.byteArray = byteArray;
         this.mainCanvas = mainCanvas;
         this.imageInfo = imageInfo;
         this.listener = listener;
         this.threadExecutor = Executors.newCachedThreadPool();
-
     }
 
     /**
@@ -64,56 +65,81 @@ public class DrawingTask implements Runnable {
      * @param row         'n'th row
      * @param colorIntRow the array of color Integers in a row.
      */
-    void receiveRowColors(int row, int[] colorIntRow) {
+    void receiveRowColors(final int row, int[] colorIntRow) {
         // Make the network requests.
-        TileInfo[] tileInfos = BitmapUtils.makeTileRequest(retrofit, imageInfo, colorIntRow);
+        final TileInfo[] tileInfos = BitmapUtils.makeTileRequest(retrofit, imageInfo, colorIntRow);
 
-        int col = 0;
+//        int col = 0;
         // A complete row of the mosaic tiles is placed in this bitmap.
-        Bitmap rowBitmap = Bitmap.createBitmap(imageInfo.getTileWidth() * imageInfo.getColNum(), imageInfo.getTileHeight(), Bitmap.Config.ARGB_8888);
+        final Bitmap rowBitmap = Bitmap.createBitmap(imageInfo.getTileWidth() * imageInfo.getColNum(), imageInfo.getTileHeight(), Bitmap.Config.ARGB_8888);
 
-        Canvas rowCanvas = new Canvas(rowBitmap);
+        final Canvas rowCanvas = new Canvas(rowBitmap);
 
-        for (TileInfo tileInfo : tileInfos) {
+        for (int col = 0; col < tileInfos.length; col++) {
 
-            try {
+            final TileInfo tileInfo = tileInfos[col];
 
-                String key = tileInfo.getKey();
+            final int width = imageInfo.getTileWidth() * col;
 
-                Bitmap tile;
+            final String key = tileInfo.getKey();
 
-                if (imageCache.containsKey(key)) {
-                    tile = imageCache.get(key);
-                } else {
-                    Response<ResponseBody> response = tileInfo.getCall().execute();
-                    InputStream in = response.body().byteStream();
-                    tile = BitmapFactory.decodeStream(in);
+            final int colNum = col;
+
+            if (imageCache.containsKey(key)) {
+                Bitmap tile = imageCache.get(key);
+                drawBitmap(rowCanvas, tile, width, tileInfo, key);
+
+                if (colNum == tileInfos.length - 1) {
+                    drawRows(rowBitmap, row);
                 }
+            } else {
+//                    Response<ResponseBody> response = tileInfo.getCall().execute();
+                tileInfo.getCall().enqueue(new Callback<ResponseBody>() {
+                    @Override
+                    public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
+                        InputStream in = response.body().byteStream();
+                        Bitmap tile = BitmapFactory.decodeStream(in);
+                        drawBitmap(rowCanvas, tile, width, tileInfo, key);
 
-                rowCanvas.drawBitmap(tile, imageInfo.getTileWidth() * col, 0, null);
+                        if (colNum == tileInfos.length - 1) {
+                            drawRows(rowBitmap, row);
+                        }
+                    }
 
-                if (!imageCache.containsKey(key)) {
-                    imageCache.put(tileInfo.getKey(), tile);
-                }
-                tile.recycle();
-            } catch (IOException e) {
-                e.printStackTrace();
+                    @Override
+                    public void onFailure(Call<ResponseBody> call, Throwable t) {
+                        if (listener != null) {
+                            listener.onDrawingFailed(t);
+                        }
+                    }
+                });
+
             }
-
-            col++;
         }
+    }
+
+    void drawRows(Bitmap rowBitmap, int row) {
         // draw the row set of the tile bitmaps on the target image.
         mainCanvas.drawBitmap(rowBitmap, 0, imageInfo.getTileWidth() * row, null);
         rowBitmap.recycle();
 
         // callback to update the ImageView.
         if (listener != null) {
-            if(row == imageInfo.getRowNum()-1){
+            if (row == imageInfo.getRowNum() - 1) {
                 listener.onDrawingFinished(true);
-            }else{
+            } else {
                 listener.onDrawingFinished(false);
             }
         }
+    }
+
+    void drawBitmap(Canvas canvas, Bitmap tile, int width, TileInfo tileInfo, String key) {
+        canvas.drawBitmap(tile, width, 0, null);
+
+        if (!imageCache.containsKey(key)) {
+            imageCache.put(tileInfo.getKey(), tile);
+        }
+        tile.recycle();
     }
 
     @Override

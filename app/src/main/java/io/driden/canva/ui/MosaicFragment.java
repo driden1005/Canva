@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Bitmap;
+import android.graphics.drawable.BitmapDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
@@ -23,6 +24,8 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import java.io.ByteArrayOutputStream;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -62,6 +65,19 @@ public class MosaicFragment extends Fragment implements MainContract.View {
 
     @BindView(R.id.tv_imgInfo)
     TextView tvImageInfo;
+
+    static MosaicFragment fragment;
+
+    public MosaicFragment() {
+
+    }
+
+    public static synchronized MosaicFragment getInstance() {
+        if (fragment == null) {
+            fragment = new MosaicFragment();
+        }
+        return fragment;
+    }
 
     /**
      * open the gallery
@@ -115,6 +131,7 @@ public class MosaicFragment extends Fragment implements MainContract.View {
     public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
 
         setHasOptionsMenu(true);
+        setRetainInstance(true);
 
         presenter = new MainFragmentPresenter(getActivity());
 
@@ -124,11 +141,32 @@ public class MosaicFragment extends Fragment implements MainContract.View {
 
         presenter.setView(this);
 
+        retainInstanceState(savedInstanceState);
+
         return mView;
+    }
+
+    void retainInstanceState(Bundle savedInstanceState) {
+        if (savedInstanceState != null) {
+            String filePath = savedInstanceState.getString("FILE_PATH");
+            String infoText = savedInstanceState.getString("INFO_TEXT");
+            byte[] bitmapByteArray = savedInstanceState.getByteArray("BITMAP");
+            if (!"".equals(filePath)) {
+                this.filePath = filePath;
+            }
+            if (!"".equals(infoText)) {
+                presenter.updateTextInfo(infoText);
+            }
+            if (bitmapByteArray != null) {
+                presenter.setByteArray(bitmapByteArray);
+                mImageView.setTag(filePath);
+            }
+        }
     }
 
     @Override
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+        menu.clear();
         inflater.inflate(R.menu.menu, menu);
         super.onCreateOptionsMenu(menu, inflater);
     }
@@ -141,6 +179,26 @@ public class MosaicFragment extends Fragment implements MainContract.View {
         }
 
         return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+        try {
+            String filePath = (String) mImageView.getTag();
+            Bitmap bitmap = ((BitmapDrawable) mImageView.getDrawable()).getBitmap();
+            ByteArrayOutputStream stream = new ByteArrayOutputStream();
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream);
+            byte[] byteArray = stream.toByteArray();
+            String InfoText = (String) tvImageInfo.getText();
+
+            outState.putByteArray("BITMAP", byteArray);
+            outState.putString("FILE_PATH", filePath);
+            outState.putString("INFO_TEXT", InfoText);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        super.onSaveInstanceState(outState);
     }
 
     @Override

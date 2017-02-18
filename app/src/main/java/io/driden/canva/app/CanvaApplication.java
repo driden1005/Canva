@@ -10,6 +10,7 @@ import io.driden.canva.module.AppModule;
 import io.driden.canva.module.ImageModule;
 import io.driden.canva.module.NetworkModule;
 
+//import io.driden.canva.component.DaggerAppComponent;
 
 public class CanvaApplication extends Application {
 
@@ -21,16 +22,11 @@ public class CanvaApplication extends Application {
     public void onCreate() {
         super.onCreate();
 
-//        final int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
-//        long ramCachSize = (int) (Runtime.getRuntime().maxMemory() / 8);
-
-        imageComponent = DaggerImageComponent
-                .builder()
+        imageComponent = DaggerImageComponent.builder()
                 .appModule(new AppModule(this))
                 .networkModule(new NetworkModule(getString(R.string.base_url)))
                 .imageModule(new ImageModule("/tiles", MAX_DISC_CACHE_SIZE, Bitmap.CompressFormat.PNG, 100))
                 .build();
-
     }
 
     public static ImageComponent getImageComponent() {

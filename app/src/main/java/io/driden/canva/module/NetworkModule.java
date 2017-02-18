@@ -6,8 +6,10 @@ import javax.inject.Singleton;
 
 import dagger.Module;
 import dagger.Provides;
+import io.driden.canva.Utils.BitmapUtils;
+import io.driden.canva.Utils.HttpClientUtils;
+import io.driden.canva.Utils.HttpClientUtilsImpl;
 import okhttp3.Cache;
-import okhttp3.OkHttpClient;
 import retrofit2.Retrofit;
 
 @Module
@@ -22,22 +24,22 @@ public class NetworkModule {
     @Provides
     @Singleton
     Cache provideHttpCache(Application application) {
-        int cacheSize = 10 * 1024 * 1024;
+        long cacheSize = BitmapUtils.MAX_DISC_CACHE_SIZE;
         return new Cache(application.getCacheDir(), cacheSize);
     }
 
     @Provides
     @Singleton
-    OkHttpClient provideOkHttpClient(Cache cache) {
-        return new OkHttpClient().newBuilder().cache(cache).build();
+    HttpClientUtils provideOkHttpClient(Cache cache) {
+
+        HttpClientUtils clientUtils = new HttpClientUtilsImpl(cache);
+        return clientUtils;
     }
 
     @Provides
     @Singleton
-    Retrofit provideRetrofit(OkHttpClient okHttpClient) {
+    Retrofit.Builder provideRetrofit() {
         return new Retrofit.Builder()
-                .baseUrl(baseUrl)
-                .client(okHttpClient)
-                .build();
+                .baseUrl(baseUrl);
     }
 }
